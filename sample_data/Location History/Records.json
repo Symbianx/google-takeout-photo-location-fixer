@@ -1,0 +1,60 @@
+{
+  "locations": [
+    {
+      "latitudeE7": 258135945,
+      "longitudeE7": 81338558,
+      "accuracy": 34,
+      "source": "WIFI",
+      "deviceTag": 112,
+      "timestamp": "2017-04-19T20:01:28.785Z"
+    },
+    {
+      "latitudeE7": 258135945,
+      "longitudeE7": 81338558,
+      "accuracy": 34,
+      "source": "WIFI",
+      "deviceTag": 112,
+      "timestamp": "2018-04-19T20:01:28.785Z"
+    },
+    {
+      "latitudeE7": 395107349,
+      "longitudeE7": -91427899,
+      "accuracy": 34,
+      "source": "WIFI",
+      "deviceTag": 112,
+      "timestamp": "2019-04-19T20:08:28.785Z"
+    },
+    {
+      "latitudeE7": 258135945,
+      "longitudeE7": 81338558,
+      "accuracy": 34,
+      "source": "WIFI",
+      "deviceTag": 112,
+      "timestamp": "2019-04-19T20:01:28.785Z"
+    },
+    {
+      "latitudeE7": 258135945,
+      "longitudeE7": 81338558,
+      "accuracy": 34,
+      "source": "WIFI",
+      "deviceTag": 112,
+      "timestamp": "2020-04-19T20:01:28.785Z"
+    },
+    {
+      "latitudeE7": 258135945,
+      "longitudeE7": 81338558,
+      "accuracy": 34,
+      "source": "WIFI",
+      "deviceTag": 112,
+      "timestamp": "2021-04-19T20:01:28.785Z"
+    },
+    {
+      "latitudeE7": 258135945,
+      "longitudeE7": 81338558,
+      "accuracy": 34,
+      "source": "WIFI",
+      "deviceTag": 112,
+      "timestamp": "2022-04-19T20:01:28.785Z"
+    }
+  ]
+}
