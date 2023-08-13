@@ -3,8 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,6 +91,7 @@ var photosDirectory = flag.StringP("photos-directory", "d", "", "path to the pho
 var tolerance = flag.DurationP("tolerance", "t", 1*time.Hour, "tolerance for the date to find (e.g. 1h, 30m, 1h30m, 1h30m30s, etc.)")
 var skipBackup = flag.Bool("skip-backup", false, "skip backup of the photos before modifying them")
 var skipPrompt = flag.BoolP("skip-promt", "y", false, "skip the prompt before modifying the photos")
+var dryRun = flag.BoolP("dry-run", "n", false, "skips all write operations")
 var verbose = flag.BoolP("verbose", "v", false, "verbose output")
 
 func main() {
@@ -134,15 +133,25 @@ func main() {
 
 	logrus.Infof("Found:")
 	logrus.Infof("\tUnsupported extensions: %v", unsupportedExtensions)
-	logrus.Infof("\tFiles to process: %v", (filesToProcess))
+	logrus.Infof("\tFiles with supported extensions: %v", len(filesToProcess))
 
-	et, err := exiftool.NewExiftool()
-	if err != nil {
-		logrus.Fatalf("Error when intializing exiftool: %v\n", err)
+	logrus.Infof("Starting the exif read operation and backups")
+	var et *exiftool.Exiftool
+	if *skipBackup == false {
+		et, err = exiftool.NewExiftool(exiftool.BackupOriginal())
+		if err != nil {
+			logrus.Fatalf("Error when intializing exiftool: %v\n", err)
+		}
+		defer et.Close()
+	} else {
+		et, err = exiftool.NewExiftool()
+		if err != nil {
+			logrus.Fatalf("Error when intializing exiftool: %v\n", err)
+		}
+		defer et.Close()
 	}
-	defer et.Close()
 
-	noLocationFoundCounter, noDateTimeCounter, gpsMetadataAlreadySetCounter, backupFailCounter := 0, 0, 0, 0
+	noLocationFoundCounter, noDateTimeCounter, gpsMetadataAlreadySetCounter := 0, 0, 0
 
 	files := et.ExtractMetadata(filesToProcess...)
 	filesPreparedToWrite := []exiftool.FileMetadata{}
@@ -150,12 +159,6 @@ func main() {
 		if fileinfo.Err != nil {
 			logrus.Fatalf("Error when extracting metadata: %v\n", fileinfo.Err)
 		}
-		// logrus.Infof("GPS metadata for file: %v", fileinfo.File)
-		// for k, v := range fileinfo.Fields {
-		// 	if strings.HasPrefix(k, "GPS") {
-		// 		logrus.Infof("\t%v: %v", k, v)
-		// 	}
-		// }
 
 		if fileinfo.Fields["GPSLatitude"] != nil || fileinfo.Fields["GPSLongitude"] != nil {
 			logrus.Debugf("Skipping file %v because it already has GPS metadata", fileinfo.File)
@@ -176,17 +179,6 @@ func main() {
 			continue
 		}
 
-		if *skipBackup == false {
-			err := backupFile(fileinfo.File)
-			if err != nil {
-				logrus.Warnf("Skipping file %v because we couldn't backup it: %v", fileinfo.File, err)
-				backupFailCounter++
-				continue
-			}
-		} else {
-			logrus.Debugf("Skipping backup of file %v", fileinfo.File)
-		}
-
 		location := findLocationFromDate(locations, dtParse)
 		if location == nil {
 			logrus.Warnf("No location found within the defined tolerance for file %v", fileinfo.File)
@@ -205,6 +197,14 @@ func main() {
 		filesPreparedToWrite = append(filesPreparedToWrite, fileinfo)
 	}
 
+	logrus.Infof("Finished the exif read operation")
+
+	logrus.Infof("Summary:")
+	logrus.Infof("\tFiles supported: %v", len(filesToProcess))
+	logrus.Infof("\tFiles with no location found: %v", noLocationFoundCounter)
+	logrus.Infof("\tFiles with no date time found: %v", noDateTimeCounter)
+	logrus.Infof("\tFiles with GPS metadata already set: %v", gpsMetadataAlreadySetCounter)
+
 	if *skipPrompt == false {
 		logrus.Infof("%v files will be modified. Do you wish to proceed? (Yes/No)", len(filesPreparedToWrite))
 
@@ -218,26 +218,28 @@ func main() {
 
 	logrus.Infof("Starting the exif rewrite operation")
 
-	et.WriteMetadata(filesPreparedToWrite)
 	errorWriteCounter := 0
 	successfulWriteCounter := 0
-	for _, v := range filesPreparedToWrite {
-		if v.Err != nil {
-			logrus.Warnf("Error when writing metadata for file %v: %v", v.File, v.Err)
-			errorWriteCounter++
-		} else {
-			successfulWriteCounter++
+
+	if *dryRun == false {
+		et.WriteMetadata(filesPreparedToWrite)
+		for _, v := range filesPreparedToWrite {
+			if v.Err != nil {
+				logrus.Warnf("Error when writing metadata for file %v: %v", v.File, v.Err)
+				errorWriteCounter++
+			} else {
+				successfulWriteCounter++
+			}
 		}
 	}
 
 	logrus.Infof("Finished the exif rewrite operation")
 	logrus.Infof("Summary:")
-	logrus.Infof("\tFiles processed: %v", len(filesToProcess))
+	logrus.Infof("\tFiles supported: %v", len(filesToProcess))
 	logrus.Infof("\tSucessfully processed files: %v", successfulWriteCounter)
 	logrus.Infof("\tFiles with no location found: %v", noLocationFoundCounter)
 	logrus.Infof("\tFiles with no date time found: %v", noDateTimeCounter)
 	logrus.Infof("\tFiles with GPS metadata already set: %v", gpsMetadataAlreadySetCounter)
-	logrus.Infof("\tFiles with backup failure: %v", backupFailCounter)
 	logrus.Infof("\tFiles with write failure: %v", errorWriteCounter)
 }
 
@@ -256,24 +258,4 @@ func requestConfirmation() bool {
 		return false
 	}
 	return false
-}
-
-func backupFile(file string) error {
-	source, err := os.Open(file)
-	if err != nil {
-		return fmt.Errorf("error opening file: %v", err)
-	}
-	defer source.Close()
-	destination, err := os.Create(fmt.Sprintf("%v.bak", file))
-	if err != nil {
-		return fmt.Errorf("error creating backup file: %v", err)
-	}
-	defer destination.Close()
-
-	_, err = io.Copy(destination, source)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
