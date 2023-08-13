@@ -239,15 +239,6 @@ func main() {
 	logrus.Infof("\tFiles with GPS metadata already set: %v", gpsMetadataAlreadySetCounter)
 	logrus.Infof("\tFiles with backup failure: %v", backupFailCounter)
 	logrus.Infof("\tFiles with write failure: %v", errorWriteCounter)
-
-	// closestMatch := findLocationFromDate(locations, dateToFindTime)
-	// if closestMatch == nil {
-	// 	logrus.Infof("No location found within the defined tolerance.")
-	// 	return
-	// }
-
-	// logrus.Infof("closest match: %v, %v", closestMatch.LatitudeE7, closestMatch.LongitudeE7)
-	// logrus.Infof("closest match divided: %v, %v", float32(closestMatch.LatitudeE7)/10000000, float32(closestMatch.LongitudeE7)/10000000)
 }
 
 func requestConfirmation() bool {
