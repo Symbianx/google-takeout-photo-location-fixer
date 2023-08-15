@@ -21,7 +21,7 @@ jobs:
         CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o dist/google-takeout-photo-location-fixer && \
         CGO_ENABLED=0 GOOS=darwin go build -mod=readonly -o dist/google-takeout-photo-location-fixer-darwin && \
         CGO_ENABLED=0 GOOS=darwin go build -mod=readonly -o dist/google-takeout-photo-location-fixer-darwin-arm64 && \
-        CGO_ENABLED=0 GOOS=windows go build -mod=readonly -o dist/google-takeout-photo-location-fixer-windows.exe && \
+        CGO_ENABLED=0 GOOS=windows go build -mod=readonly -o dist/google-takeout-photo-location-fixer-windows.exe
     - name: build
       uses: ./.github/workflows/build.yaml
     - name: Release
