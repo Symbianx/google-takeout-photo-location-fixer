@@ -1,25 +1,30 @@
 # Google Takeout Photo Location Fixer
 
-This Go script uses the Google Takeout location information to add GPS data to pictures without without a location.
+This Go tool uses the Google Takeout location information to add GPS data to pictures without without a location.
 
 It works by looking at the time the picture was taken and using the location data to determine your location at the time.
 
 
-### Requirements
+## Requirements
 
-You must download Phil Harvey's exiftool binary from https://exiftool.org/.
-
-Right now, there's no binary published so you also need to build the tool from source. For that you need to [download and install go](https://go.dev/doc/install)
+You must download and install Phil Harvey's exiftool binary from https://exiftool.org/.
 
 
-### Running the tool
+## Running the tool
+
+Download the tool from the [latest GitHub release](https://github.com/Symbianx/google-takeout-photo-location-fixer/releases).
 
 This command will run the tool process all `.jpg` files in the `sample_data` directory using the location history in `./sample_data/Location\ History/Records.json`:
 ```shell
-go run main.go -d ./sample_data -f ./sample_data/Location\ History/Records.json
+google-takeout-photo-location-fixer -d ./sample_data -f ./sample_data/Location\ History/Records.json
+```
+
+If you get an error about not finding the exiftool in the $PATH, you can use the `--exiftool-binary` argument to pass it's location:
+```shell
+google-takeout-photo-location-fixer  --exiftool-binary /home/Symbianx/Downloads/exiftool -d ./sample_data -f ./sample_data/Location\ History/Records.json
 ```
 
 To get a list of all available options run:
 ```shell
-go run main.go --help
+google-takeout-photo-location-fixer --help
 ```
