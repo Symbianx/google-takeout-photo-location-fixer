@@ -31,64 +31,10 @@ func locationLessFunc(a, b Location) bool {
 	return a.Timestamp.Before(b.Timestamp)
 }
 
-// reads locations from a Records.json google takeout file and returns a btree with all the locations
-func readLocations(locationFile string) (*btree.BTreeG[Location], error) {
-	bytes, err := os.ReadFile(locationFile)
-	if err != nil {
-		return nil, err
-	}
-
-	var locations LocationFile
-	err = json.Unmarshal(bytes, &locations)
-	if err != nil {
-		return nil, err
-	}
-
-	btree := btree.NewG[Location](2, locationLessFunc)
-	for _, v := range locations.Locations {
-		btree.ReplaceOrInsert(v)
-	}
-
-	return btree, nil
-}
-
-func getUnsignedDateDifference(a, b time.Time) time.Duration {
-	if a.Before(b) {
-		return b.Sub(a)
-	}
-	return a.Sub(b)
-}
-
-func findLocationFromDate(locations *btree.BTreeG[Location], dateToFindTime time.Time) *Location {
-	var closestMatch *Location
-	closestMatchDifference := 999999 * time.Hour
-	locations.AscendRange(Location{Timestamp: dateToFindTime.Add(-*tolerance)}, Location{Timestamp: dateToFindTime.Add(*tolerance)}, (func(l Location) bool {
-		currentDifference := getUnsignedDateDifference(l.Timestamp, dateToFindTime)
-
-		// Stop right away if the exact date is found
-		if l.Timestamp == dateToFindTime {
-			closestMatch = &l
-			return false
-		}
-
-		if currentDifference < closestMatchDifference {
-			closestMatch = &l
-			closestMatchDifference = currentDifference
-		}
-
-		return true
-	}))
-
-	if closestMatch == nil || closestMatchDifference > *tolerance {
-		logrus.Tracef("No location found within the defined tolerance.")
-		return nil
-	}
-	return closestMatch
-}
-
-var locationFile = flag.StringP("locationFile", "f", "", "path to the location file")
+var locationFile = flag.StringP("location-records", "f", "", "path to the Records.json from the Google Takeout")
 var photosDirectory = flag.StringP("photos-directory", "d", "", "path to the photos directory")
 var tolerance = flag.DurationP("tolerance", "t", 1*time.Hour, "tolerance for the date to find (e.g. 1h, 30m, 1h30m, 1h30m30s, etc.)")
+var exiftoolBinary = flag.String("exiftool-binary", "", "path to the exiftool binary. If not specified, will try to find the binary in the $PATH")
 var skipBackup = flag.Bool("skip-backup", false, "skip backup of the photos before modifying them")
 var skipPrompt = flag.BoolP("skip-promt", "y", false, "skip the prompt before modifying the photos")
 var dryRun = flag.BoolP("dry-run", "n", false, "skips all write operations")
@@ -102,13 +48,19 @@ func main() {
 		logrus.SetLevel(logrus.TraceLevel)
 	}
 
+	et, err := setupExiftool()
+	if err != nil {
+		logrus.Fatalf("Error when setting up exiftool: %v", err)
+	}
+	defer et.Close()
+
 	locations, err := readLocations(*locationFile)
 
 	if err != nil {
 		panic(err)
 	}
 
-	logrus.Infof("Read %v locations", locations.Len())
+	logrus.Infof("Read %v GPS locations", locations.Len())
 	unsupportedExtensions := map[string]int{}
 	filesToProcess := []string{}
 
@@ -136,20 +88,6 @@ func main() {
 	logrus.Infof("\tFiles with supported extensions: %v", len(filesToProcess))
 
 	logrus.Infof("Starting the exif read operation and backups")
-	var et *exiftool.Exiftool
-	if *skipBackup == false {
-		et, err = exiftool.NewExiftool(exiftool.BackupOriginal())
-		if err != nil {
-			logrus.Fatalf("Error when intializing exiftool: %v\n", err)
-		}
-		defer et.Close()
-	} else {
-		et, err = exiftool.NewExiftool()
-		if err != nil {
-			logrus.Fatalf("Error when intializing exiftool: %v\n", err)
-		}
-		defer et.Close()
-	}
 
 	noLocationFoundCounter, noDateTimeCounter, gpsMetadataAlreadySetCounter := 0, 0, 0
 
@@ -241,6 +179,77 @@ func main() {
 	logrus.Infof("\tFiles with no date time found: %v", noDateTimeCounter)
 	logrus.Infof("\tFiles with GPS metadata already set: %v", gpsMetadataAlreadySetCounter)
 	logrus.Infof("\tFiles with write failure: %v", errorWriteCounter)
+}
+
+func setupExiftool() (*exiftool.Exiftool, error) {
+	exiftoolOpts := [](func(*exiftool.Exiftool) error){}
+	if *exiftoolBinary != "" {
+		exiftoolOpts = append(exiftoolOpts, exiftool.SetExiftoolBinaryPath(*exiftoolBinary))
+	}
+	if *skipBackup == false {
+		exiftoolOpts = append(exiftoolOpts, exiftool.BackupOriginal())
+	}
+
+	et, err := exiftool.NewExiftool(exiftoolOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return et, nil
+}
+
+// reads locations from a Records.json google takeout file and returns a btree with all the locations
+func readLocations(locationFile string) (*btree.BTreeG[Location], error) {
+	bytes, err := os.ReadFile(locationFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var locations LocationFile
+	err = json.Unmarshal(bytes, &locations)
+	if err != nil {
+		return nil, err
+	}
+
+	btree := btree.NewG[Location](2, locationLessFunc)
+	for _, v := range locations.Locations {
+		btree.ReplaceOrInsert(v)
+	}
+
+	return btree, nil
+}
+
+func getUnsignedDateDifference(a, b time.Time) time.Duration {
+	if a.Before(b) {
+		return b.Sub(a)
+	}
+	return a.Sub(b)
+}
+
+func findLocationFromDate(locations *btree.BTreeG[Location], dateToFindTime time.Time) *Location {
+	var closestMatch *Location
+	closestMatchDifference := 999999 * time.Hour
+	locations.AscendRange(Location{Timestamp: dateToFindTime.Add(-*tolerance)}, Location{Timestamp: dateToFindTime.Add(*tolerance)}, (func(l Location) bool {
+		currentDifference := getUnsignedDateDifference(l.Timestamp, dateToFindTime)
+
+		// Stop right away if the exact date is found
+		if l.Timestamp == dateToFindTime {
+			closestMatch = &l
+			return false
+		}
+
+		if currentDifference < closestMatchDifference {
+			closestMatch = &l
+			closestMatchDifference = currentDifference
+		}
+
+		return true
+	}))
+
+	if closestMatch == nil || closestMatchDifference > *tolerance {
+		logrus.Tracef("No location found within the defined tolerance.")
+		return nil
+	}
+	return closestMatch
 }
 
 func requestConfirmation() bool {
