@@ -267,19 +267,21 @@ func TestE2E_DryRun(t *testing.T) {
 		t.Fatalf("Failed to stat file after dry-run: %v", err)
 	}
 
-	if !infoAfter.ModTime().Equal(infoBefore.ModTime()) {
-		// Modification time might change, so also check content
-		dataAfter, err := os.ReadFile(dstPath)
-		if err != nil {
-			t.Fatalf("Failed to read file after dry-run: %v", err)
-		}
-
-		// Compare file content
-		if string(data) != string(dataAfter) {
-			t.Error("File content changed during dry-run (should not have been modified)")
-		}
+	// Always check file content after dry-run
+	dataAfter, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatalf("Failed to read file after dry-run: %v", err)
 	}
 
+	// Compare file content
+	if string(data) != string(dataAfter) {
+		t.Error("File content changed during dry-run (should not have been modified)")
+	}
+
+	// Optionally, also check modification time
+	if !infoAfter.ModTime().Equal(infoBefore.ModTime()) {
+		t.Error("File modification time changed during dry-run (should not have been modified)")
+	}
 	// Verify output mentions the dry-run didn't write
 	outputStr := string(output)
 	if !strings.Contains(outputStr, "Read 5 GPS locations") {
