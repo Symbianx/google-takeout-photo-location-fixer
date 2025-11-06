@@ -46,12 +46,18 @@ To run only unit tests:
 go test -v -run "Test(ReadLocations|GetUnsignedDateDifference|FindLocationFromDate|LocationLessFunc)"
 ```
 
-To run only e2e tests (requires exiftool to be installed):
+To run only e2e tests:
 ```shell
+# Build the binary first
+go build -v
+
+# Then run e2e tests
 go test -v -run "TestE2E"
 ```
 
-**Note:** E2E tests require exiftool to be installed and available in your PATH.
+**Note:** E2E tests require:
+- The binary to be built (`go build`) before running the tests
+- exiftool to be installed and available in your PATH
 
 ### Building from Source
 
