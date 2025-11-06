@@ -28,3 +28,40 @@ To get a list of all available options run:
 ```shell
 google-takeout-photo-location-fixer --help
 ```
+
+
+## Development
+
+### Running Tests
+
+The project includes both unit tests and end-to-end (e2e) tests.
+
+To run all tests:
+```shell
+go test -v ./...
+```
+
+To run only unit tests:
+```shell
+go test -v -run "Test(ReadLocations|GetUnsignedDateDifference|FindLocationFromDate|LocationLessFunc)"
+```
+
+To run only e2e tests:
+```shell
+# Build the binary first
+go build -v
+
+# Then run e2e tests
+go test -v -run "TestE2E"
+```
+
+**Note:** E2E tests require:
+- The binary to be built (`go build`) before running the tests
+- exiftool to be installed and available in your PATH
+
+### Building from Source
+
+```shell
+go build -v
+```
+
