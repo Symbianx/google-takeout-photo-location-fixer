@@ -236,16 +236,12 @@ func findLocationFromDate(locations *btree.BTreeG[Location], dateToFindTime time
 
 		// Stop right away if the exact date is found
 		if l.Timestamp == dateToFindTime {
-			// Create a copy to avoid capturing loop variable
-			location := l
-			closestMatch = &location
+			closestMatch = &l
 			return false
 		}
 
 		if currentDifference < closestMatchDifference {
-			// Create a copy to avoid capturing loop variable
-			location := l
-			closestMatch = &location
+			closestMatch = &l
 			closestMatchDifference = currentDifference
 		}
 
