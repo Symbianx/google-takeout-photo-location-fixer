@@ -57,14 +57,14 @@ func main() {
 	locations, err := readLocations(*locationFile)
 
 	if err != nil {
-		panic(err)
+		logrus.Fatalf("Error when reading locations: %v", err)
 	}
 
 	logrus.Infof("Read %v GPS locations", locations.Len())
 	unsupportedExtensions := map[string]int{}
 	filesToProcess := []string{}
 
-	filepath.WalkDir(*photosDirectory, func(path string, d os.DirEntry, err error) error {
+	err = filepath.WalkDir(*photosDirectory, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -82,6 +82,9 @@ func main() {
 
 		return nil
 	})
+	if err != nil {
+		logrus.Fatalf("Error when walking directory: %v", err)
+	}
 
 	logrus.Infof("Found:")
 	logrus.Infof("\tUnsupported extensions: %v", unsupportedExtensions)
@@ -143,10 +146,10 @@ func main() {
 	logrus.Infof("\tFiles with no date time found: %v", noDateTimeCounter)
 	logrus.Infof("\tFiles with GPS metadata already set: %v", gpsMetadataAlreadySetCounter)
 
-	if *skipPrompt == false {
+	if !*skipPrompt {
 		logrus.Infof("%v files will be modified. Do you wish to proceed? (Yes/No)", len(filesPreparedToWrite))
 
-		if requestConfirmation() == false {
+		if !requestConfirmation() {
 			logrus.Infof("Aborting.")
 			os.Exit(0)
 		}
@@ -159,7 +162,7 @@ func main() {
 	errorWriteCounter := 0
 	successfulWriteCounter := 0
 
-	if *dryRun == false {
+	if !*dryRun {
 		et.WriteMetadata(filesPreparedToWrite)
 		for _, v := range filesPreparedToWrite {
 			if v.Err != nil {
@@ -186,7 +189,7 @@ func setupExiftool() (*exiftool.Exiftool, error) {
 	if *exiftoolBinary != "" {
 		exiftoolOpts = append(exiftoolOpts, exiftool.SetExiftoolBinaryPath(*exiftoolBinary))
 	}
-	if *skipBackup == false {
+	if !*skipBackup {
 		exiftoolOpts = append(exiftoolOpts, exiftool.BackupOriginal())
 	}
 
@@ -233,12 +236,16 @@ func findLocationFromDate(locations *btree.BTreeG[Location], dateToFindTime time
 
 		// Stop right away if the exact date is found
 		if l.Timestamp == dateToFindTime {
-			closestMatch = &l
+			// Create a copy to avoid capturing loop variable
+			location := l
+			closestMatch = &location
 			return false
 		}
 
 		if currentDifference < closestMatchDifference {
-			closestMatch = &l
+			// Create a copy to avoid capturing loop variable
+			location := l
+			closestMatch = &location
 			closestMatchDifference = currentDifference
 		}
 
