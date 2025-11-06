@@ -2,7 +2,7 @@
 
 This Go tool uses the Google Takeout location information to add GPS data to pictures without without a location.
 
-It works by looking at the time the picture was taken and using the location data to determine your location at the time.
+It works by looking at the time the picture was taken and using the location data to determine your approximate location at the time.
 
 
 ## Requirements
