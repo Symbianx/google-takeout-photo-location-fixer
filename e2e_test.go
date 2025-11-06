@@ -17,7 +17,7 @@ func TestE2E_FullWorkflow(t *testing.T) {
 	// Use the binary from the current directory
 	binaryPath := "./google-takeout-photo-location-fixer"
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		t.Skipf("Binary not found at %s - please run 'go build' before running e2e tests", binaryPath)
+		t.Fatalf("Binary not found at %s - please run 'go build' before running e2e tests", binaryPath)
 	}
 
 	// Create a temp directory for test files
@@ -215,7 +215,7 @@ func TestE2E_DryRun(t *testing.T) {
 	// Use the binary from the current directory
 	binaryPath := "./google-takeout-photo-location-fixer"
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		t.Skipf("Binary not found at %s - please run 'go build' before running e2e tests", binaryPath)
+		t.Fatalf("Binary not found at %s - please run 'go build' before running e2e tests", binaryPath)
 	}
 
 	// Create a temp directory for test files
